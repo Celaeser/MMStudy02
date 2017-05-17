@@ -18,14 +18,7 @@
 			  "-t path : Set path of output text file of histogram( default for histogramX.txt )\n"\
 			  "-c color type(YUV \\ YCbCr \\ YIQ \\ HSI) : Set color type( default for YUV )\n"
 
-int main(void)
-{
-	std::array<std::pair<uint32_t, uint32_t>, 256> accuData = { std::make_pair(0, 0) };
-
-	return 0;
-}
-
-int smain(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
 	::opterr = 0;
 	char optch = 0;
@@ -116,6 +109,7 @@ int smain(int argc, char* argv[])
 			if (colorType == ImageMat::Gray) {
 				colorType = ImageMat::YUV;
 			}
+
 			image = cvtColor(image, colorType);
 		}
 
