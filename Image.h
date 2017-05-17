@@ -7,7 +7,7 @@
 //This is a final class, no virtual funcs
 class ImageMat {
 public:
-    typedef std::uint8_t Byte;
+    typedef double Byte;
     enum Type {
     	BGR, YUV, YIQ, YCbCr, HSI, Gray
 	};

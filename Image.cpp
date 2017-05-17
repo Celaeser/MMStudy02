@@ -2,6 +2,7 @@
 #include "ImageProcess.h"
 #include <fstream>
 #include <stdexcept>
+#include <vector>
 
 #pragma pack(1)
 struct BITMAP_FILE_HEADER {
@@ -61,21 +62,25 @@ ImageMat ImageMat::createFromBMP(const std::string &inputFileURI) {
                                                  - imageMat.width * imageMat.channels; // Skip filled data
 
 	imageMat.rawData = new ImageMat::Byte[imageMat.width * imageMat.height * imageMat.channels];
+	std::vector<uint8_t> lineCntr(imageMat.width * imageMat.channels);
+	Byte *rawDataPos = nullptr;
 
     file.seekg(header.bfOffBits, file.beg);
 
     for (int i = 0; i < imageMat.height; ++i) {
-        char *rawDataPos = nullptr;
-
+		file.read((char*)lineCntr.data(), imageMat.width * imageMat.channels);
         if (info.biHeight > 0) {
-            rawDataPos = (char *) (imageMat.rawData +
+            rawDataPos = (imageMat.rawData +
                                    (imageMat.height - 1 - i) * imageMat.width * imageMat.channels);
         } else {
-            rawDataPos = (char *) (imageMat.rawData +
+            rawDataPos = (imageMat.rawData +
                                    i * imageMat.width * imageMat.channels);
         }
 
-        file.read(rawDataPos, imageMat.width * imageMat.channels);
+		for (int j = 0; j < imageMat.width * imageMat.channels; ++j) {
+			rawDataPos[j] = lineCntr[j];
+		}
+
         file.seekg(lineSkipCount, file.cur);
     }
 
@@ -87,7 +92,7 @@ void ImageMat::doCopy(const ImageMat &ImageMat) {
     if (ImageMat.rawData != nullptr) {
         rawData = new Byte[ImageMat.width * ImageMat.height * ImageMat.channels];
         std::memcpy(rawData, ImageMat.rawData,
-                    ImageMat.width * ImageMat.height * ImageMat.channels);
+                    ImageMat.width * ImageMat.height * ImageMat.channels * sizeof(Byte));
     }
 }
 
@@ -178,11 +183,17 @@ void ImageMat::saveToBMP(const std::string &outputFileURI) {
         }
     }
 
-    const char *rawDataPos = nullptr;
+    Byte *rawDataPos = nullptr;
+	std::vector<uint8_t> lineCntr(width * channels);
     char emptyZone[4] = {0};
     for (int i = height - 1; i >= 0; --i) {
-        rawDataPos = (const char *) rawData + i * width * channels;
-        file.write(rawDataPos, width * channels);
+        rawDataPos = rawData + i * width * channels;
+
+		for (int j = 0; j < width * channels; ++j) {
+			lineCntr[j] = (uint8_t)std::round(rawDataPos[j]);
+		}
+
+        file.write((char*)lineCntr.data(), width * channels);
         file.write(emptyZone, lineSize - width * channels);
     }
     file.close();

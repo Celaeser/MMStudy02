@@ -16,7 +16,12 @@
 			  "-t path : Set path of output text file of histogram( default for histogramX.txt )\n"\
 			  "-c color type(YUV \\ YCbCr \\ YIQ \\ HSI) : Set color type( default for YUV )\n"
 
-int main(int argc, char* argv[])
+int main(void)
+{
+	return 0;
+}
+
+int smain(int argc, char* argv[])
 {
 	::opterr = 0;
 	char optch = 0;
