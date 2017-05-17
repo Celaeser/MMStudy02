@@ -9,6 +9,8 @@
 #include "ImageProcess.h"
 #include "getopt.h"
 
+#include <array>
+
 #define USAGE "=== Help Info ===\n"\
 			  "-h : Show help info\n"\
 			  "-i path : Set image file path\n"\
@@ -18,6 +20,8 @@
 
 int main(void)
 {
+	std::array<std::pair<uint32_t, uint32_t>, 256> accuData = { std::make_pair(0, 0) };
+
 	return 0;
 }
 

@@ -6,22 +6,17 @@
 #include <cstdint>
 #include "ImageProcess.h"
 
-static std::vector<uint32_t> he_helper(const ImageMat &origin, const int channel, std::ostream& histogram)
+static std::vector<uint8_t> he_helper(const ImageMat &origin, const int channel, std::ostream& histogram)
 {
-	std::vector<uint32_t> mapData(256, 0);
-	std::array<std::pair<uint32_t, uint32_t>, 256> accuData = { {{0, 0}} };
+	std::vector<uint8_t> mapData(256, 0);
+	std::array<std::pair<uint32_t, uint32_t>, 256> accuData = { std::make_pair(0, 0) };
 	std::array<uint32_t, 256> countData = { 0 };
 	const uint32_t TOTAL = origin.getWidth() * origin.getHeight();
-
-	//Initialize
-	for (auto& p : accuData) {
-		p.first = p.second = 0;
-	}
 
 	//Count
 	for (int i = 0; i < origin.getWidth(); ++i) {
 		for (int j = 0; j < origin.getHeight(); ++j) {
-			++accuData[origin.getPixiv(i, j)[channel]].first;
+			++accuData[(size_t)origin.getPixiv(i, j)[channel]].first;
 		}
 	}
 
@@ -39,7 +34,7 @@ static std::vector<uint32_t> he_helper(const ImageMat &origin, const int channel
 
 	//Equalization
 	for (int i = 1; i < 256; ++i) {
-		mapData[i] = (uint32_t)(accuData[i].second * 255.0 / TOTAL);
+		mapData[i] = (uint8_t)std::round(accuData[i].second * 255.0 / TOTAL);
 		countData[mapData[i]] = accuData[i].first;
 	}
 
@@ -55,7 +50,7 @@ static std::vector<uint32_t> he_helper(const ImageMat &origin, const int channel
 std::vector<ImageMat> histogram_equalization(const ImageMat &origin, std::ostream& histogram)
 {
 	std::vector<ImageMat> imageSet;
-	std::vector<uint32_t> mapData;
+	std::vector<uint8_t> mapData;
 	const uint32_t TOTAL = origin.getWidth() * origin.getHeight();
 
 	if (origin.getType() == ImageMat::Gray) {
@@ -158,8 +153,9 @@ static ImageMat cvtColorToBGR(const ImageMat &origin)
 	// Do convert
 	uint32_t cols = origin.getWidth();
 	uint32_t rows = origin.getHeight();
-	const uint8_t *originData = origin.getRawData();
-	uint8_t *outputData = output.getRawData();
+	const ImageMat::Byte *originData = origin.getRawData();
+	ImageMat::Byte *outputData = output.getRawData();
+
 	switch (origin.getType()) {
 	case ImageMat::BGR:
 		output = origin;
@@ -167,17 +163,17 @@ static ImageMat cvtColorToBGR(const ImageMat &origin)
 	case ImageMat::YUV: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				const uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t Y = originPix[0];
+				const ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte Y = originPix[0];
 				double U = (originPix[1] - 128.0) / 0.5 * 0.437;
 				double V = (originPix[2] - 128.0) / 0.5 * 0.615;
 				// R
-				outputPix[2] = (uint8_t)std::round(1 * Y + 0.000 * U + 1.140 * V);
+				outputPix[2] = (ImageMat::Byte)std::round(1 * Y + 0.000 * U + 1.140 * V);
 				// G
-				outputPix[1] = (uint8_t)std::round(1 * Y - 0.395 * U - 0.581 * V);
+				outputPix[1] = (ImageMat::Byte)std::round(1 * Y - 0.395 * U - 0.581 * V);
 				// B
-				outputPix[0] = (uint8_t)std::round(1 * Y + 2.032 * U + 0.000 * V);
+				outputPix[0] = (ImageMat::Byte)std::round(1 * Y + 2.032 * U + 0.000 * V);
 			}
 		}
 		break;
@@ -185,17 +181,17 @@ static ImageMat cvtColorToBGR(const ImageMat &origin)
 	case ImageMat::YCbCr: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				const uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t Y = originPix[0];
-				uint8_t Cb = originPix[1];
-				uint8_t Cr = originPix[2];
+				const ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte Y = originPix[0];
+				ImageMat::Byte Cb = originPix[1];
+				ImageMat::Byte Cr = originPix[2];
 				// R
-				outputPix[2] = (uint8_t)std::round(1 * Y + 0.00000 * (Cb - 128) + 1.40200 * (Cr - 128));
+				outputPix[2] = (ImageMat::Byte)std::round(1 * Y + 0.00000 * (Cb - 128) + 1.40200 * (Cr - 128));
 				// G
-				outputPix[1] = (uint8_t)std::round(1 * Y - 0.34414 * (Cb - 128) - 0.71414 * (Cr - 128));
+				outputPix[1] = (ImageMat::Byte)std::round(1 * Y - 0.34414 * (Cb - 128) - 0.71414 * (Cr - 128));
 				// B
-				outputPix[0] = (uint8_t)std::round(1 * Y + 1.77200 * (Cb - 128) + 0.00000 * (Cr - 128));
+				outputPix[0] = (ImageMat::Byte)std::round(1 * Y + 1.77200 * (Cb - 128) + 0.00000 * (Cr - 128));
 			}
 		}
 		break;
@@ -203,17 +199,17 @@ static ImageMat cvtColorToBGR(const ImageMat &origin)
 	case ImageMat::YIQ: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				const uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t Y = originPix[0];
+				const ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte Y = originPix[0];
 				double I = (originPix[1] - 128.0) / 0.5 * 0.596;
 				double Q = (originPix[2] - 128.0) / 0.5 * 0.522;
 				// R
-				outputPix[2] = (uint8_t)std::round(1 * Y + 0.956 * I + 0.623 * Q);
+				outputPix[2] = (ImageMat::Byte)std::round(1 * Y + 0.956 * I + 0.623 * Q);
 				// G
-				outputPix[1] = (uint8_t)std::round(1 * Y - 0.272 * I - 0.648 * Q);
+				outputPix[1] = (ImageMat::Byte)std::round(1 * Y - 0.272 * I - 0.648 * Q);
 				// B
-				outputPix[0] = (uint8_t)std::round(1 * Y - 1.105 * I + 0.705 * Q);
+				outputPix[0] = (ImageMat::Byte)std::round(1 * Y - 1.105 * I + 0.705 * Q);
 			}
 		}
 		break;
@@ -222,37 +218,37 @@ static ImageMat cvtColorToBGR(const ImageMat &origin)
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
 				// FIXME: some problems here
-				const uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
+				const ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
 				double H = originPix[0] / 255.0 * 360;
 				double S = originPix[1] / 255.0;
 				double I = originPix[2];
 				if (H <= 120) {
 					// B
-					outputPix[0] = (uint8_t)std::round(I * (1 - S));
+					outputPix[0] = (ImageMat::Byte)std::round(I * (1 - S));
 					// R
-					outputPix[2] = (uint8_t)std::round(I * (1 + S * cos(M_PI / 180 * H) / cos(M_PI / 180 * (60 - H))));
+					outputPix[2] = (ImageMat::Byte)std::round(I * (1 + S * cos(M_PI / 180 * H) / cos(M_PI / 180 * (60 - H))));
 					// G
-					outputPix[1] = (uint8_t)std::round(3 * I - (outputPix[0] + outputPix[2]));
+					outputPix[1] = (ImageMat::Byte)std::round(3 * I - (outputPix[0] + outputPix[2]));
 				}
 				else if (H <= 240) {
 					H -= 120;
 					// R
-					outputPix[2] = (uint8_t)std::round(I * (1 - S));
+					outputPix[2] = (ImageMat::Byte)std::round(I * (1 - S));
 					// G
-					outputPix[1] = (uint8_t)std::round(I * (1 + S * cos(M_PI / 180 * H) / cos(M_PI / 180 * (60 - H))));
+					outputPix[1] = (ImageMat::Byte)std::round(I * (1 + S * cos(M_PI / 180 * H) / cos(M_PI / 180 * (60 - H))));
 					// B
-					outputPix[0] = (uint8_t)std::round(3 * I - (outputPix[2] + outputPix[1]));
+					outputPix[0] = (ImageMat::Byte)std::round(3 * I - (outputPix[2] + outputPix[1]));
 
 				}
 				else {
 					H -= 240;
 					// G
-					outputPix[1] = (uint8_t)std::round(I * (1 - S));
+					outputPix[1] = (ImageMat::Byte)std::round(I * (1 - S));
 					// B
-					outputPix[0] = (uint8_t)std::round(I * (1 + S * cos(M_PI / 180 * H) / cos(M_PI / 180 * (60 - H))));
+					outputPix[0] = (ImageMat::Byte)std::round(I * (1 + S * cos(M_PI / 180 * H) / cos(M_PI / 180 * (60 - H))));
 					// R
-					outputPix[2] = (uint8_t)std::round(3 * I - (outputPix[1] + outputPix[0]));
+					outputPix[2] = (ImageMat::Byte)std::round(3 * I - (outputPix[1] + outputPix[0]));
 				}
 			}
 		}
@@ -294,15 +290,15 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 	// Convert BGR To other
 	uint32_t cols = bgrImage.getWidth();
 	uint32_t rows = bgrImage.getHeight();
-	uint8_t *originData = bgrImage.getRawData();
-	uint8_t *outputData = output.getRawData();
+	ImageMat::Byte *originData = bgrImage.getRawData();
+	ImageMat::Byte *outputData = output.getRawData();
 
 	switch (outputType) {
 	case ImageMat::Gray: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				outputData[i * cols + j] = static_cast<uint8_t >(originPix[2] * 0.299 + originPix[1] * 0.587 +
+				ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				outputData[i * cols + j] = static_cast<ImageMat::Byte>(originPix[2] * 0.299 + originPix[1] * 0.587 +
 					originPix[0] * 0.114);
 			}
 		}
@@ -312,17 +308,17 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 	case ImageMat::YUV: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t R = originPix[2];
-				uint8_t G = originPix[1];
-				uint8_t B = originPix[0];
+				ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte R = originPix[2];
+				ImageMat::Byte G = originPix[1];
+				ImageMat::Byte B = originPix[0];
 				// Y
-				outputPix[0] = (uint8_t)std::round(0.299 * R + 0.587 * G + 0.114 * B);
+				outputPix[0] = (ImageMat::Byte)std::round(0.299 * R + 0.587 * G + 0.114 * B);
 				// U
-				outputPix[1] = (uint8_t)std::round((-0.148 * R - 0.289 * G + 0.437 * B) / 0.437 * 0.5 + 128);
+				outputPix[1] = (ImageMat::Byte)std::round((-0.148 * R - 0.289 * G + 0.437 * B) / 0.437 * 0.5 + 128);
 				// V
-				outputPix[2] = (uint8_t)std::round((0.615 * R - 0.515 * G - 0.100 * B) / 0.615 * 0.5 + 128);
+				outputPix[2] = (ImageMat::Byte)std::round((0.615 * R - 0.515 * G - 0.100 * B) / 0.615 * 0.5 + 128);
 			}
 		}
 		break;
@@ -331,17 +327,17 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 	case ImageMat::YCbCr: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t R = originPix[2];
-				uint8_t G = originPix[1];
-				uint8_t B = originPix[0];
+				ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte R = originPix[2];
+				ImageMat::Byte G = originPix[1];
+				ImageMat::Byte B = originPix[0];
 				// Y
-				outputPix[0] = (uint8_t)std::round(0.290 * R + 0.587 * G + 0.114 * B);
+				outputPix[0] = (ImageMat::Byte)std::round(0.290 * R + 0.587 * G + 0.114 * B);
 				// Cb
-				outputPix[1] = (uint8_t)std::round(-0.1687 * R - 0.3313 * G + 0.500 * B + 128);
+				outputPix[1] = (ImageMat::Byte)std::round(-0.1687 * R - 0.3313 * G + 0.500 * B + 128);
 				// Cr
-				outputPix[2] = (uint8_t)std::round(0.5000 * R - 0.4187 * G - 0.0813 * B + 128);
+				outputPix[2] = (ImageMat::Byte)std::round(0.5000 * R - 0.4187 * G - 0.0813 * B + 128);
 			}
 		}
 		break;
@@ -350,17 +346,17 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 	case ImageMat::YIQ: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t R = originPix[2];
-				uint8_t G = originPix[1];
-				uint8_t B = originPix[0];
+				ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte R = originPix[2];
+				ImageMat::Byte G = originPix[1];
+				ImageMat::Byte B = originPix[0];
 				// Y
-				outputPix[0] = (uint8_t)std::round(0.290 * R + 0.587 * G + 0.114 * B);
+				outputPix[0] = (ImageMat::Byte)std::round(0.290 * R + 0.587 * G + 0.114 * B);
 				// I
-				outputPix[1] = (uint8_t)std::round((0.596 * R - 0.274 * G - 0.322 * B) / 0.596 * 0.5 + 128);
+				outputPix[1] = (ImageMat::Byte)std::round((0.596 * R - 0.274 * G - 0.322 * B) / 0.596 * 0.5 + 128);
 				// Q
-				outputPix[2] = (uint8_t)std::round((0.211 * R - 0.522 * G + 0.311 * B) / 0.522 * 0.5 + 128);
+				outputPix[2] = (ImageMat::Byte)std::round((0.211 * R - 0.522 * G + 0.311 * B) / 0.522 * 0.5 + 128);
 			}
 		}
 		break;
@@ -369,11 +365,11 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 	case ImageMat::HSI: {
 		for (int i = 0; i < origin.getHeight(); ++i) {
 			for (int j = 0; j < origin.getWidth(); ++j) {
-				uint8_t *originPix = originData + i * cols * 3 + j * 3;
-				uint8_t *outputPix = outputData + i * cols * 3 + j * 3;
-				uint8_t R = originPix[2];
-				uint8_t G = originPix[1];
-				uint8_t B = originPix[0];
+				ImageMat::Byte *originPix = originData + i * cols * 3 + j * 3;
+				ImageMat::Byte *outputPix = outputData + i * cols * 3 + j * 3;
+				ImageMat::Byte R = originPix[2];
+				ImageMat::Byte G = originPix[1];
+				ImageMat::Byte B = originPix[0];
 
 				double tmp = sqrt((B - G) * (B - G) + (R - B) * (G - B));
 				if (tmp == 0) {
@@ -382,10 +378,10 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 				double theta = (180 / M_PI) * acos(0.5 * (2 * R - G - B) / tmp);
 				// H
 				if (B <= G) {
-					outputPix[0] = (uint8_t)std::round(theta * 255.0 / 360);
+					outputPix[0] = (ImageMat::Byte)std::round(theta * 255.0 / 360);
 				}
 				else {
-					outputPix[0] = (uint8_t)std::round((360 - theta) * 255.0 / 360);
+					outputPix[0] = (ImageMat::Byte)std::round((360 - theta) * 255.0 / 360);
 				}
 				// S
 				uint8_t minSubpixel = R;
@@ -398,13 +394,13 @@ ImageMat cvtColor(const ImageMat &origin, ImageMat::Type outputType)
 				int sum = R + G + B;
 
 				if (sum != 0) {
-					outputPix[1] = (uint8_t)std::round((1 - 3.0 * minSubpixel / sum) * 255);
+					outputPix[1] = (ImageMat::Byte)std::round((1 - 3.0 * minSubpixel / sum) * 255);
 				}
 				else {
 					outputPix[1] = 0;
 				}
 				// I
-				outputPix[2] = (uint8_t)std::round(sum / 3);
+				outputPix[2] = (ImageMat::Byte)std::round(sum / 3);
 			}
 		}
 		break;
